@@ -1,0 +1,20 @@
+{
+ "color": "#ffa00a",
+ "creation": "2026-05-04 17:30:00",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "Intercompany Inbox",
+ "filters_json": "[[\"Intercompany Inbox\",\"status\",\"=\",\"Pending\",false]]",
+ "function": "Count",
+ "is_public": 1,
+ "label": "Pending Inbox",
+ "method": "",
+ "modified": "2026-05-04 17:30:00",
+ "modified_by": "Administrator",
+ "module": "Intercompany",
+ "name": "Pending Inbox",
+ "owner": "Administrator",
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Daily",
+ "type": "Document Type"
+}

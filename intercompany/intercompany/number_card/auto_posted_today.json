@@ -1,0 +1,20 @@
+{
+ "color": "#28a745",
+ "creation": "2026-05-04 17:30:00",
+ "docstatus": 0,
+ "doctype": "Number Card",
+ "document_type": "Intercompany Log",
+ "filters_json": "[[\"Intercompany Log\",\"status\",\"=\",\"Success\",false],[\"Intercompany Log\",\"timestamp\",\"Timespan\",\"today\",false]]",
+ "function": "Count",
+ "is_public": 1,
+ "label": "Auto-Posted Today",
+ "method": "",
+ "modified": "2026-05-04 17:30:00",
+ "modified_by": "Administrator",
+ "module": "Intercompany",
+ "name": "Auto-Posted Today",
+ "owner": "Administrator",
+ "show_percentage_stats": 1,
+ "stats_time_interval": "Daily",
+ "type": "Document Type"
+}

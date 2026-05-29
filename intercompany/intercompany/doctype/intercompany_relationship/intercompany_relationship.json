@@ -1,0 +1,223 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "IC-REL-.YYYY.-.#####",
+ "creation": "2026-05-04 09:19:53.129836",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_companies",
+  "company_a",
+  "company_b",
+  "column_break_hiygd",
+  "internal_customer_a",
+  "internal_supplier_a",
+  "internal_customer_b",
+  "internal_supplier_b",
+  "section_policy",
+  "posting_mode",
+  "auto_submit_threshold",
+  "approver_role",
+  "column_break_f3n2p",
+  "fx_policy",
+  "on_error",
+  "section_accounts",
+  "due_to_a",
+  "due_from_a",
+  "column_break_deyhy",
+  "due_to_b",
+  "due_from_b",
+  "section_mapping",
+  "document_mapping"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_companies",
+   "fieldtype": "Section Break",
+   "label": "Companies"
+  },
+  {
+   "fieldname": "company_a",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company A",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company_b",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company B",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "internal_customer_a",
+   "fieldtype": "Link",
+   "label": "Internal Customer in A (represents B)",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "internal_supplier_a",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Internal Supplier in A (represents B)",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "internal_customer_b",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "label": "Internal Customer in B (represents A)",
+   "options": "Customer"
+  },
+  {
+   "fieldname": "internal_supplier_b",
+   "fieldtype": "Link",
+   "label": "Internal Supplier in B (represents A)",
+   "options": "Supplier"
+  },
+  {
+   "fieldname": "section_policy",
+   "fieldtype": "Section Break",
+   "label": "Posting Policy"
+  },
+  {
+   "default": "Threshold-based",
+   "fieldname": "posting_mode",
+   "fieldtype": "Select",
+   "label": "Posting Mode",
+   "options": "Auto\nThreshold-based\nManual"
+  },
+  {
+   "fieldname": "auto_submit_threshold",
+   "fieldtype": "Currency",
+   "label": "Auto Submit Threshold (company currency)"
+  },
+  {
+   "fieldname": "approver_role",
+   "fieldtype": "Link",
+   "label": "Approver Role in Target",
+   "options": "Role"
+  },
+  {
+   "default": "Posting Date",
+   "fieldname": "fx_policy",
+   "fieldtype": "Select",
+   "label": "FX Policy",
+   "options": "Posting Date\nManual\nBlock Missing"
+  },
+  {
+   "default": "Block",
+   "fieldname": "on_error",
+   "fieldtype": "Select",
+   "label": "On Error",
+   "options": "Block\nQueue\nIgnore"
+  },
+  {
+   "fieldname": "section_accounts",
+   "fieldtype": "Section Break",
+   "label": "Due-To / Due-From Accounts"
+  },
+  {
+   "fieldname": "due_to_a",
+   "fieldtype": "Link",
+   "label": "Due To in A (owed to B)",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "due_from_a",
+   "fieldtype": "Link",
+   "label": "Due From in A (owed by B)",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "due_to_b",
+   "fieldtype": "Link",
+   "label": "Due To in B (owed to A)",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "due_from_b",
+   "fieldtype": "Link",
+   "label": "Due From in B (owed by A)",
+   "options": "Account",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_mapping",
+   "fieldtype": "Section Break",
+   "label": "Document Mapping"
+  },
+  {
+   "fieldname": "document_mapping",
+   "fieldtype": "Table",
+   "label": "Document Mapping",
+   "options": "Intercompany Document Mapping"
+  },
+  {
+   "fieldname": "column_break_hiygd",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_f3n2p",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_deyhy",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "links": [
+  {
+   "group": "Activity",
+   "link_doctype": "Intercompany Inbox",
+   "link_fieldname": "source_company"
+  },
+  {
+   "group": "Activity",
+   "link_doctype": "Intercompany Log",
+   "link_fieldname": "company"
+  }
+ ],
+ "modified": "2026-05-05 13:50:23.247237",
+ "modified_by": "Administrator",
+ "module": "Intercompany",
+ "name": "Intercompany Relationship",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Intercompany User"
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Intercompany Approver",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

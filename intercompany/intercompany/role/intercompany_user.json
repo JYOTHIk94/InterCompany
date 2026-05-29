@@ -1,0 +1,12 @@
+{
+ "creation": "2026-05-04 12:00:00",
+ "desk_access": 1,
+ "disabled": 0,
+ "doctype": "Role",
+ "is_custom": 1,
+ "modified": "2026-05-04 12:00:00",
+ "modified_by": "Administrator",
+ "name": "Intercompany User",
+ "owner": "Administrator",
+ "role_name": "Intercompany User"
+}

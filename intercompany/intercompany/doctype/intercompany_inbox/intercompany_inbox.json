@@ -1,0 +1,220 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "IC-INBOX-.YYYY.-.#####",
+ "creation": "2026-05-04 08:23:05.936848",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "is_submittable": 1,
+ "track_changes": 1,
+ "field_order": [
+  "section_source",
+  "source_company",
+  "source_doctype",
+  "source_name",
+  "column_break_src",
+  "target_company",
+  "target_doctype",
+  "target_name",
+  "section_amount",
+  "amount",
+  "currency",
+  "column_break_yw18v",
+  "fx_rate",
+  "section_status",
+  "status",
+  "policy_reason",
+  "column_break_status",
+  "retry_count",
+  "last_attempt",
+  "section_audit",
+  "accepted_by",
+  "accepted_on",
+  "column_break_audit",
+  "error_message"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_source",
+   "fieldtype": "Section Break",
+   "label": "Source"
+  },
+  {
+   "fieldname": "source_company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Source Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_doctype",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Source DocType",
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "fieldname": "source_name",
+   "fieldtype": "Dynamic Link",
+   "in_list_view": 1,
+   "label": "Source Document",
+   "options": "source_doctype",
+   "reqd": 1
+  },
+  {
+   "fieldname": "target_company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Target Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "target_doctype",
+   "fieldtype": "Link",
+   "label": "Target DocType",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "target_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Target Document (Draft)",
+   "options": "target_doctype"
+  },
+  {
+   "fieldname": "section_amount",
+   "fieldtype": "Section Break",
+   "label": "Amount"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "in_list_view": 1,
+   "label": "Amount (base)"
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Source Currency",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "fx_rate",
+   "fieldtype": "Float",
+   "label": "Exchange Rate",
+   "precision": "9"
+  },
+  {
+   "fieldname": "section_status",
+   "fieldtype": "Section Break",
+   "label": "Status"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Pending\nAccepted\nRejected\nFailed",
+   "reqd": 1
+  },
+  {
+   "fieldname": "policy_reason",
+   "fieldtype": "Data",
+   "label": "Policy Reason"
+  },
+  {
+   "default": "0",
+   "fieldname": "retry_count",
+   "fieldtype": "Int",
+   "label": "Retry Count"
+  },
+  {
+   "fieldname": "last_attempt",
+   "fieldtype": "Datetime",
+   "label": "Last Attempt"
+  },
+  {
+   "fieldname": "section_audit",
+   "fieldtype": "Section Break",
+   "label": "Audit"
+  },
+  {
+   "fieldname": "accepted_by",
+   "fieldtype": "Link",
+   "label": "Accepted By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "accepted_on",
+   "fieldtype": "Datetime",
+   "label": "Accepted On",
+   "read_only": 1
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Small Text",
+   "label": "Error Message"
+  },
+  {
+   "fieldname": "column_break_yw18v",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_src",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_status",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "column_break_audit",
+   "fieldtype": "Column Break"
+  }
+ ],
+ "links": [],
+ "modified": "2026-05-04 17:30:00",
+ "modified_by": "Administrator",
+ "module": "Intercompany",
+ "name": "Intercompany Inbox",
+ "naming_rule": "Expression (old style)",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "submit": 1,
+   "cancel": 1,
+   "amend": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Intercompany User"
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "report": 1,
+   "write": 1,
+   "submit": 1,
+   "cancel": 1,
+   "role": "Intercompany Approver"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

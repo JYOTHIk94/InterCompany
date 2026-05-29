@@ -1,0 +1,75 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-05-04 12:00:00",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "source_doctype",
+  "target_doctype",
+  "mapping_rule",
+  "pricing_rule",
+  "markup_pct",
+  "status"
+ ],
+ "fields": [
+  {
+   "fieldname": "source_doctype",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Source DocType",
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "fieldname": "target_doctype",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Target DocType",
+   "options": "DocType",
+   "reqd": 1
+  },
+  {
+   "default": "Item to Item",
+   "fieldname": "mapping_rule",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Mapping Rule",
+   "options": "Item to Item\nWarehouse to Warehouse\nMirror with Sign Flip\nAllocation Template"
+  },
+  {
+   "default": "1:1",
+   "fieldname": "pricing_rule",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Pricing",
+   "options": "1:1\nCost Plus Markup\nCustom"
+  },
+  {
+   "depends_on": "eval:doc.pricing_rule=='Cost Plus Markup'",
+   "fieldname": "markup_pct",
+   "fieldtype": "Percent",
+   "label": "Markup %"
+  },
+  {
+   "default": "Active",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Active\nDraft\nDisabled"
+  }
+ ],
+ "istable": 1,
+ "links": [],
+ "modified": "2026-05-04 12:00:00",
+ "modified_by": "Administrator",
+ "module": "Intercompany",
+ "name": "Intercompany Document Mapping",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

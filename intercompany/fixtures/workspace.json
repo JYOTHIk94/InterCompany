@@ -1,0 +1,57 @@
+[
+ {
+  "charts": [],
+  "content": "[{\"id\":\"XaAcIwOFHs\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Intercompany</span>\",\"col\":12}},{\"id\":\"NIlXiXDXCi\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"PENDING IN INBOX\",\"col\":4}},{\"id\":\"fnEyhuQClb\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"ACTIVE RELATIONSHIPS\",\"col\":4}},{\"id\":\"GPHNg1O4ok\",\"type\":\"number_card\",\"data\":{\"number_card_name\":\"AUTO POSTED DOCS\",\"col\":4}},{\"id\":\"MfZ1Bf782w\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"5N7duJgEPE\",\"type\":\"custom_block\",\"data\":{\"custom_block_name\":\"Intercompany Inbox Activity\",\"col\":12}}]",
+  "custom_blocks": [
+   {
+    "custom_block_name": "Intercompany Inbox Activity",
+    "label": "Intercompany Inbox Activity",
+    "parent": "Intercompany",
+    "parentfield": "custom_blocks",
+    "parenttype": "Workspace"
+   }
+  ],
+  "docstatus": 0,
+  "doctype": "Workspace",
+  "for_user": "",
+  "hide_custom": 0,
+  "icon": null,
+  "is_hidden": 0,
+  "label": "Intercompany",
+  "links": [],
+  "modified": "2026-05-08 14:15:03.425378",
+  "module": "Intercompany",
+  "name": "Intercompany",
+  "number_cards": [
+   {
+    "label": "PENDING IN INBOX",
+    "number_card_name": "INbox Count",
+    "parent": "Intercompany",
+    "parentfield": "number_cards",
+    "parenttype": "Workspace"
+   },
+   {
+    "label": "ACTIVE RELATIONSHIPS",
+    "number_card_name": "Intercompany Relationships",
+    "parent": "Intercompany",
+    "parentfield": "number_cards",
+    "parenttype": "Workspace"
+   },
+   {
+    "label": "AUTO POSTED DOCS",
+    "number_card_name": "Autopost in Inbox",
+    "parent": "Intercompany",
+    "parentfield": "number_cards",
+    "parenttype": "Workspace"
+   }
+  ],
+  "parent_page": "",
+  "public": 1,
+  "quick_lists": [],
+  "restrict_to_domain": null,
+  "roles": [],
+  "sequence_id": 23.0,
+  "shortcuts": [],
+  "title": "Intercompany"
+ }
+]

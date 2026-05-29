@@ -1,0 +1,13 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Custom HTML Block",
+  "html": "<h3>Recent Activity</h3>\n<table class=\"table table-bordered table-condensed\" id=\"task_table\"></table>\n",
+  "modified": "2026-05-08 13:54:48.630541",
+  "name": "Intercompany Inbox Activity",
+  "private": 0,
+  "roles": [],
+  "script": "frappe.call({\n    method: \"frappe.client.get_list\",\n    args: {\n        doctype: \"Intercompany Inbox\",\n\n        filters: {\n            status: [\"in\", [\"Pending\", \"Accepted\", \"Rejected\"]]\n        },\n\n        fields: [\n            \"name\",\n            \"source_name\",\n            \"target_doctype\",\n            \"status\",\n            \"amount\",\n            \"source_company\",\n            \"target_company\",\n            \"creation\"\n        ],\n\n        order_by: \"creation desc\", // latest first\n        limit_page_length: 5       // latest 5 documents only\n    },\n\n    callback: function (response) {\n\n        if (response.message) {\n            populateTaskTable(response.message);\n        }\n    }\n});\n\nfunction populateTaskTable(tasks) {\n\n    let taskTable = root_element.querySelector(\"#task_table\");\n\n    let tableHTML = `\n        <thead>\n            <tr>\n                <th>Inbox</th>\n                <th>Source Document</th>\n                <th>Target Doctype</th>\n                <th>Status</th>\n                <th>Amount</th>\n            </tr>\n        </thead>\n        <tbody>\n    `;\n\n    if (tasks.length === 0) {\n\n        tableHTML += `\n            <tr>\n                <td colspan=\"5\" style=\"text-align:center;\">\n                    No Records Found\n                </td>\n            </tr>\n        `;\n\n    } else {\n\n        tasks.forEach(task => {\n\n            let statusColor = \"orange\";\n\n            if (task.status === \"Accepted\") {\n                statusColor = \"green\";\n            }\n\n            if (task.status === \"Rejected\") {\n                statusColor = \"red\";\n            }\n\n            tableHTML += `\n                <tr>\n\n                    <td>\n                        <a href=\"/app/intercompany-inbox/${task.name}\">\n                            ${task.name}\n                        </a>\n                    </td>\n\n                    <td>${task.source_name || \"\"}</td>\n\n                    <td>${task.target_doctype || \"\"}</td>\n\n                    <td style=\"color:${statusColor}; font-weight:bold;\">\n                        ${task.status || \"\"}\n                    </td>\n\n                    <td>${task.amount || 0}</td>\n\n                </tr>\n            `;\n        });\n    }\n\n    tableHTML += `</tbody>`;\n\n    taskTable.innerHTML = tableHTML;\n}",
+  "style": null
+ }
+]
