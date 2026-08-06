@@ -6,7 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 
 
-class IntercompanyRelationship(Document):
+class IntercompanyRule(Document):
 	def validate(self):
 		self.validate_companies()
 		self.validate_accounts()
@@ -42,7 +42,7 @@ class IntercompanyRelationship(Document):
 
 	def validate_uniqueness(self):
 		dup = frappe.db.exists(
-			"Intercompany Relationship",
+			"Intercompany Rule",
 			{
 				"name": ["!=", self.name],
 				"company_a": ["in", [self.company_a, self.company_b]],

@@ -20,9 +20,9 @@ class TestIntercompanyE2E(FrappeTestCase):
 		super().setUpClass()
 		seed_demo()
 		cls.rel = frappe.get_doc(
-			"Intercompany Relationship",
+			"Intercompany Rule",
 			frappe.db.get_value(
-				"Intercompany Relationship",
+				"Intercompany Rule",
 				[["company_a", "in", [CO_A, CO_B]], ["company_b", "in", [CO_A, CO_B]]],
 				"name",
 			),
@@ -76,7 +76,7 @@ class TestIntercompanyE2E(FrappeTestCase):
 		inbox = self._inbox_for(si)
 		self.assertEqual(inbox.status, "Pending")
 
-		inbox_doc = frappe.get_doc("Intercompany Inbox", inbox.name)
+		inbox_doc = frappe.get_doc("Intercompany Ledger", inbox.name)
 		inbox_doc.accept()
 
 		inbox_doc.reload()
@@ -93,7 +93,7 @@ class TestIntercompanyE2E(FrappeTestCase):
 		inbox = self._inbox_for(si)
 		target_name = inbox.target_name
 
-		inbox_doc = frappe.get_doc("Intercompany Inbox", inbox.name)
+		inbox_doc = frappe.get_doc("Intercompany Ledger", inbox.name)
 		inbox_doc.reject(reason="Demo rejection")
 
 		inbox_doc.reload()
@@ -116,7 +116,7 @@ class TestIntercompanyE2E(FrappeTestCase):
 		pi = frappe.get_doc("Purchase Invoice", pi_name)
 		self.assertEqual(pi.docstatus, 2, "Counter PI must cancel when source SI cancels")
 
-		inbox_doc = frappe.get_doc("Intercompany Inbox", inbox.name)
+		inbox_doc = frappe.get_doc("Intercompany Ledger", inbox.name)
 		self.assertEqual(inbox_doc.status, "Rejected")
 
 	# ---------- idempotency: resubmit-after-amend does not double-post ----------
@@ -129,8 +129,8 @@ class TestIntercompanyE2E(FrappeTestCase):
 		process_ic_event(si)
 
 		count = frappe.db.count(
-			"Intercompany Inbox",
-			{"source_doctype": "Sales Invoice", "source_name": si.name},
+			"Intercompany Ledger",
+			{"entry_type": "Transaction", "source_doctype": "Sales Invoice", "source_name": si.name},
 		)
 		self.assertEqual(count, 1, "Re-firing the hook must not create a second inbox row")
 
@@ -157,8 +157,12 @@ class TestIntercompanyE2E(FrappeTestCase):
 
 	def _inbox_for(self, source_doc):
 		name = frappe.db.get_value(
-			"Intercompany Inbox",
-			{"source_doctype": source_doc.doctype, "source_name": source_doc.name},
+			"Intercompany Ledger",
+			{
+				"entry_type": "Transaction",
+				"source_doctype": source_doc.doctype,
+				"source_name": source_doc.name,
+			},
 			"name",
 		)
-		return frappe.get_doc("Intercompany Inbox", name) if name else None
+		return frappe.get_doc("Intercompany Ledger", name) if name else None

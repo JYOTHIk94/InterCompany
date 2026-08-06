@@ -9,8 +9,8 @@ def run():
 	# Clean ALL artefacts of past debug runs (SI, PI, inbox, JE)
 	for si in frappe.get_all("Sales Invoice", filters={"po_no": "IC-DEMO-MC-DEBUG"}, pluck="name"):
 		# Inbox rows for this SI
-		for ib in frappe.get_all("Intercompany Inbox", filters={"source_name": si}, pluck="name"):
-			try: frappe.delete_doc("Intercompany Inbox", ib, force=1, ignore_permissions=True)
+		for ib in frappe.get_all("Intercompany Ledger", filters={"source_name": si}, pluck="name"):
+			try: frappe.delete_doc("Intercompany Ledger", ib, force=1, ignore_permissions=True)
 			except: pass
 		# PIs for this SI
 		for pi in frappe.get_all("Purchase Invoice", filters={"custom_intercompany_reference": si}, pluck="name"):
@@ -41,7 +41,7 @@ def run():
 	frappe.db.commit()
 
 	customer = frappe.db.get_value(
-		"Intercompany Relationship",
+		"Intercompany Rule",
 		{"company_a": "QCS Holding", "company_b": "QCS UAE"},
 		"internal_customer_a",
 	)

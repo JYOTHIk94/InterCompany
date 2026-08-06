@@ -2,8 +2,17 @@ import frappe
 from frappe.utils import nowdate
 
 from intercompany.intercompany.services.fx_service import get_rate
-from intercompany.intercompany.services.inbox_service import create_inbox
-from intercompany.intercompany.services.log_service import log_ic
+from intercompany.intercompany.services.ledger_service import create_transaction, log_ic
+
+# Target-side buying documents whose item rates ERPNext will re-fetch from the
+# price list unless suppressed on a cross-currency counter-doc.
+_BUYING_DOCTYPES = ("Purchase Invoice", "Purchase Receipt", "Purchase Order")
+
+# Sources that carry no GL impact of their own. An order is a commitment, not a
+# financial event: raising Due-to/Due-from clearing legs for one would inflate
+# the intercompany balance before anything is invoiced, and the Sales Invoice
+# that follows would post those same legs again.
+_NON_GL_SOURCES = ("Sales Order",)
 
 
 def process_ic_event(doc, method=None):
@@ -17,7 +26,7 @@ def process_ic_event(doc, method=None):
 		return
 
 	try:
-		mapping = _resolve_mapping(rel, doc.doctype)
+		mapping = _resolve_mapping(doc.doctype)
 		if not mapping:
 			log_ic(doc, f"No mapping for {doc.doctype}", "Failed", "Mapping missing")
 			return
@@ -29,53 +38,68 @@ def process_ic_event(doc, method=None):
 		if mode == "Auto":
 			target = _create_target(doc, rel, mapping, submit=True, fx_rate=fx_rate)
 			_post_gl_legs(doc, rel, target, amount_base, fx_rate=fx_rate)
-			create_inbox(
+			create_transaction(
 				doc, rel,
 				status="Accepted",
 				target_doctype=mapping.target_doctype,
 				target_name=target.name,
 				policy_reason="Auto",
 				fx_rate=fx_rate,
+				submit=True,
 			)
 			log_ic(doc, f"Auto-posted {mapping.target_doctype}", "Success", target.name)
 
 		elif mode == "Threshold-based":
 			threshold = rel.auto_submit_threshold or 0
-			if amount_base < threshold:
-				target = _create_target(doc, rel, mapping, submit=True)
-				_post_gl_legs(doc, rel, target, amount_base)
-				create_inbox(
+			# Inclusive: the threshold is the largest amount that still auto-posts.
+			if amount_base <= threshold:
+				target = _create_target(doc, rel, mapping, submit=True, fx_rate=fx_rate)
+				_post_gl_legs(doc, rel, target, amount_base, fx_rate=fx_rate)
+				create_transaction(
 					doc, rel,
 					status="Accepted",
 					target_doctype=mapping.target_doctype,
 					target_name=target.name,
-					policy_reason=f"Auto (under {threshold})",
+					policy_reason=f"Auto (at or under {threshold})",
 					fx_rate=fx_rate,
+					submit=True,
 				)
-				log_ic(doc, "Auto-posted under threshold", "Success", target.name)
+				log_ic(doc, "Auto-posted at or under threshold", "Success", target.name)
 			else:
-				target = _create_target(doc, rel, mapping, submit=False, fx_rate=fx_rate)
-				create_inbox(
+				# Over threshold is a hard stop, not an approval queue. No counter-doc
+				# is built, and the row is closed as Rejected — there is nothing to
+				# accept later. accept() and on_submit() both refuse a Rejected row,
+				# so a counter-doc can only ever exist for the Accepted case.
+				create_transaction(
 					doc, rel,
-					status="Pending",
+					status="Rejected",
 					target_doctype=mapping.target_doctype,
-					target_name=target.name,
-					policy_reason=f"Threshold > {threshold}",
+					target_name=None,
+					policy_reason=f"Rejected — exceeds threshold {threshold}",
 					fx_rate=fx_rate,
+					error_message=(
+						f"Amount {amount_base} exceeds the auto-submit threshold "
+						f"{threshold} for {rel.name}"
+					),
 				)
-				log_ic(doc, "Parked in inbox", "Queued", target.name)
+				log_ic(
+					doc, "Rejected — exceeds threshold", "Success",
+					f"{amount_base} > {threshold}",
+				)
 
 		elif mode == "Manual":
-			target = _create_target(doc, rel, mapping, submit=False, fx_rate=fx_rate)
-			create_inbox(
+			# Manual policy defers counter-doc creation to acceptance time: only the
+			# ledger row is written here. target_doctype records what to build later;
+			# target_name stays empty until someone accepts.
+			create_transaction(
 				doc, rel,
 				status="Pending",
 				target_doctype=mapping.target_doctype,
-				target_name=target.name,
+				target_name=None,
 				policy_reason="Manual review",
 				fx_rate=fx_rate,
 			)
-			log_ic(doc, "Manual review required", "Queued", target.name)
+			log_ic(doc, "Manual review required", "Queued", "")
 
 	except Exception as e:
 		log_ic(doc, "IC posting error", "Failed", str(e))
@@ -86,82 +110,69 @@ def process_ic_event(doc, method=None):
 
 def cascade_cancel(doc, method=None):
 	"""on_cancel hook — cancel the linked counter-doc."""
-	inbox_name = frappe.db.get_value(
-		"Intercompany Inbox",
-		{"source_doctype": doc.doctype, "source_name": doc.name},
+	entry_name = frappe.db.get_value(
+		"Intercompany Ledger",
+		{"entry_type": "Transaction", "source_doctype": doc.doctype, "source_name": doc.name},
 		"name",
 	)
-	if not inbox_name:
+	if not entry_name:
 		return
 
-	inbox = frappe.get_doc("Intercompany Inbox", inbox_name)
-	if inbox.target_doctype and inbox.target_name:
+	entry = frappe.get_doc("Intercompany Ledger", entry_name)
+	if entry.target_doctype and entry.target_name:
 		try:
-			tgt = frappe.get_doc(inbox.target_doctype, inbox.target_name)
+			tgt = frappe.get_doc(entry.target_doctype, entry.target_name)
 			if tgt.docstatus == 1:
 				tgt.cancel()
 			elif tgt.docstatus == 0:
-				frappe.delete_doc(inbox.target_doctype, inbox.target_name, force=1)
+				frappe.delete_doc(entry.target_doctype, entry.target_name, force=1)
 		except frappe.DoesNotExistError:
 			pass
 
-	inbox.db_set("status", "Rejected")
-	log_ic(doc, "Cancelled — counter-doc reversed", "Success", inbox.target_name or "")
+	entry.db_set("status", "Rejected")
+	log_ic(doc, "Cancelled — counter-doc reversed", "Success", entry.target_name or "")
 
 
 # ---------- helpers ----------
 
 def _find_relationship(doc):
 	"""Detect IC relationship from source-side fields. Returns Document or None."""
-	if doc.doctype == "Sales Invoice":
-		customer = getattr(doc, "customer", None)
-		if not customer:
-			return None
-		represents = frappe.db.get_value("Customer", customer, "represents_company")
-		if not represents:
-			return None
-		name = frappe.db.get_value(
-			"Intercompany Relationship",
-			[
-				["company_a", "in", [doc.company, represents]],
-				["company_b", "in", [doc.company, represents]],
-			],
-			"name",
-		)
-		return frappe.get_doc("Intercompany Relationship", name) if name else None
-
-	if doc.doctype == "Delivery Note":
+	# Customer-driven sources all resolve the same way: the internal customer
+	# names the company it represents, and that pairs the two companies.
+	if doc.doctype in ("Sales Invoice", "Delivery Note", "Sales Order"):
 		customer = getattr(doc, "customer", None)
 		represents = frappe.db.get_value("Customer", customer, "represents_company") if customer else None
 		if not represents:
 			return None
 		name = frappe.db.get_value(
-			"Intercompany Relationship",
+			"Intercompany Rule",
 			[
 				["company_a", "in", [doc.company, represents]],
 				["company_b", "in", [doc.company, represents]],
 			],
 			"name",
 		)
-		return frappe.get_doc("Intercompany Relationship", name) if name else None
+		return frappe.get_doc("Intercompany Rule", name) if name else None
 
 	if doc.doctype == "Journal Entry":
 		# JE is detected by an account belonging to the IC due-to/due-from list
 		accounts = [r.account for r in doc.accounts]
 		name = frappe.db.sql(
-			"""select name from `tabIntercompany Relationship`
+			"""select name from `tabIntercompany Rule`
 			   where due_to_a in %(a)s or due_from_a in %(a)s
 			      or due_to_b in %(a)s or due_from_b in %(a)s
 			   limit 1""",
 			{"a": tuple(accounts) or ("",)},
 		)
-		return frappe.get_doc("Intercompany Relationship", name[0][0]) if name else None
+		return frappe.get_doc("Intercompany Rule", name[0][0]) if name else None
 
 	return None
 
 
-def _resolve_mapping(rel, source_doctype):
-	for row in rel.document_mapping or []:
+def _resolve_mapping(source_doctype):
+	"""Mappings are global, held on the Intercompany Settings single."""
+	settings = frappe.get_cached_doc("Intercompany Settings")
+	for row in settings.document_mapping or []:
 		if row.source_doctype == source_doctype and (row.status or "Active") == "Active":
 			return row
 	return None
@@ -185,17 +196,13 @@ def _amount_in_base(doc):
 
 
 def _create_target(doc, rel, mapping, submit=False, fx_rate=1.0):
-	if frappe.db.exists(
-		"Intercompany Inbox",
-		{"source_doctype": doc.doctype, "source_name": doc.name},
-	):
-		existing_target = frappe.db.get_value(
-			"Intercompany Inbox",
-			{"source_doctype": doc.doctype, "source_name": doc.name},
-			"target_name",
-		)
-		if existing_target:
-			return frappe.get_doc(mapping.target_doctype, existing_target)
+	existing_target = frappe.db.get_value(
+		"Intercompany Ledger",
+		{"entry_type": "Transaction", "source_doctype": doc.doctype, "source_name": doc.name},
+		"target_name",
+	)
+	if existing_target:
+		return frappe.get_doc(mapping.target_doctype, existing_target)
 
 	is_a_to_b = doc.company == rel.company_a
 	target_company = rel.company_b if is_a_to_b else rel.company_a
@@ -259,6 +266,44 @@ def _create_target(doc, rel, mapping, submit=False, fx_rate=1.0):
 				"base_net_amount": amount,
 				"conversion_factor": 1,
 				"expense_account": target_expense_account,
+			})
+	elif mapping.target_doctype == "Purchase Order":
+		tgt = frappe.new_doc("Purchase Order")
+		tgt.company = target_company
+		tgt.supplier = internal_supplier
+		tgt.custom_intercompany_reference = doc.name
+		tgt.currency = target_currency
+		tgt.conversion_rate = 1.0
+		tgt.transaction_date = getattr(doc, "transaction_date", None) or nowdate()
+		# Purchase Order requires a schedule date on the parent AND every row.
+		schedule_date = getattr(doc, "delivery_date", None) or tgt.transaction_date
+		tgt.schedule_date = schedule_date
+		_apply_buying_price_list(tgt, target_currency)
+		if cross_currency:
+			tgt.ignore_pricing_rule = 1
+			tgt.buying_price_list = ""
+		target_warehouse = _default_warehouse(target_company)
+		for item in doc.items:
+			rate = item.rate * rate_multiplier
+			if mapping.pricing_rule == "Cost Plus Markup" and mapping.markup_pct:
+				rate = rate * (1 + (mapping.markup_pct / 100.0))
+			amount = rate * item.qty
+			tgt.append("items", {
+				"item_code": item.item_code,
+				"qty": item.qty,
+				"rate": rate,
+				"price_list_rate": rate,
+				"base_rate": rate,
+				"base_price_list_rate": rate,
+				"amount": amount,
+				"base_amount": amount,
+				"net_rate": rate,
+				"base_net_rate": rate,
+				"net_amount": amount,
+				"base_net_amount": amount,
+				"conversion_factor": 1,
+				"schedule_date": schedule_date,
+				"warehouse": target_warehouse,
 			})
 	elif mapping.target_doctype == "Purchase Receipt":
 		tgt = frappe.new_doc("Purchase Receipt")
@@ -325,26 +370,18 @@ def _create_target(doc, rel, mapping, submit=False, fx_rate=1.0):
 
 	# Suppress ERPNext's price-list re-fetch during insert/submit on a cross-currency
 	# counter-doc (otherwise it overwrites our converted item rates).
-	if cross_currency and mapping.target_doctype in ("Purchase Invoice", "Purchase Receipt"):
+	if cross_currency and mapping.target_doctype in _BUYING_DOCTYPES:
 		tgt.flags.ignore_pricing_rule = True
 		tgt.flags.ignore_account_permission = True
 
-	import sys
-	print(f"DBG _create_target: cross_currency={cross_currency} fx_rate={fx_rate} rate_multiplier={rate_multiplier}", file=sys.stderr)
-	if tgt.get("items"):
-		print(f"DBG before insert: items[0].rate={tgt.items[0].rate}", file=sys.stderr)
 	tgt.insert(ignore_permissions=True)
-	if tgt.get("items"):
-		print(f"DBG after insert: items[0].rate={tgt.items[0].rate}", file=sys.stderr)
 	if submit:
 		# Reload from DB so the in-memory copy can't trigger set_missing_values again.
 		tgt = frappe.get_doc(tgt.doctype, tgt.name)
-		if cross_currency and mapping.target_doctype in ("Purchase Invoice", "Purchase Receipt"):
+		if cross_currency and mapping.target_doctype in _BUYING_DOCTYPES:
 			tgt.flags.ignore_pricing_rule = True
-		print(f"DBG before submit: items[0].rate={tgt.items[0].rate}", file=sys.stderr)
 		tgt.submit()
 		tgt.reload()
-		print(f"DBG after submit: items[0].rate={tgt.items[0].rate}", file=sys.stderr)
 	return tgt
 
 
@@ -354,8 +391,8 @@ def _is_dispatcher_generated(doc):
 		remark = (doc.user_remark or "")
 		if remark.startswith("Mirror of ") or "IC clearing for" in remark:
 			return True
-	if doc.doctype in ("Purchase Invoice", "Purchase Receipt"):
-		# These are target-side docs; the dispatcher hooks SI/DN/JE only, so no recursion risk.
+	if doc.doctype in ("Purchase Invoice", "Purchase Receipt", "Purchase Order"):
+		# These are target-side docs; the dispatcher hooks SO/SI/DN/JE only, so no recursion risk.
 		# Custom field marks them as IC-generated.
 		if getattr(doc, "custom_intercompany_reference", None):
 			return True
@@ -414,6 +451,8 @@ def _post_gl_legs(doc, rel, target, amount_base, fx_rate=1.0):
 	on the Due-to/Due-from accounts so the unmatched-balance report has data to read.
 	"""
 	if not amount_base:
+		return
+	if doc.doctype in _NON_GL_SOURCES:
 		return
 	is_a_to_b = doc.company == rel.company_a
 	src_company = rel.company_a if is_a_to_b else rel.company_b

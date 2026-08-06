@@ -10,7 +10,7 @@
  "module": "Intercompany",
  "name": "Unmatched IC Balance",
  "owner": "Administrator",
- "ref_doctype": "Intercompany Relationship",
+ "ref_doctype": "Intercompany Rule",
  "report_name": "Unmatched IC Balance",
  "report_type": "Script Report",
  "roles": [

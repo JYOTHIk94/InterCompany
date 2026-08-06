@@ -22,7 +22,7 @@ for blk in content:
     deduped.append(blk)
 ws.content = json.dumps(deduped)
 for sc in ws.shortcuts:
-    if sc.link_to == "Intercompany Relationship":
+    if sc.link_to == "Intercompany Rule":
         sc.stats_filter = None
 ws.save(ignore_permissions=True)
 frappe.db.commit()
