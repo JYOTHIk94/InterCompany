@@ -117,6 +117,10 @@ app_license = "MIT"
 # Hook on document methods and events
 
 doc_events = {
+    "Sales Order": {
+        "on_submit": "intercompany.intercompany.overrides.sales_order.create_ic_transaction",
+        "on_cancel": "intercompany.intercompany.overrides.sales_order.reverse_ic_transaction",
+    },
     "Sales Invoice": {
         "on_submit": "intercompany.intercompany.overrides.sales_invoice.create_ic_transaction",
         "on_cancel": "intercompany.intercompany.overrides.sales_invoice.reverse_ic_transaction",
@@ -131,10 +135,14 @@ doc_events = {
     },
 }
 
+# The ledger only ever *observes* the documents it references — a submitted entry
+# must never block cancelling or deleting the source or counter document it points
+# at. Same category frappe puts Communication, Version and ToDo in.
+ignore_links_on_delete = ["Intercompany Ledger"]
+
 permission_query_conditions = {
-    "Intercompany Inbox": "intercompany.intercompany.permissions.inbox_query_conditions",
-    "Intercompany Log": "intercompany.intercompany.permissions.log_query_conditions",
-    "Intercompany Relationship": "intercompany.intercompany.permissions.relationship_query_conditions",
+    "Intercompany Ledger": "intercompany.intercompany.permissions.ledger_query_conditions",
+    "Intercompany Rule": "intercompany.intercompany.permissions.relationship_query_conditions",
 }
 # Scheduled Tasks
 # ---------------
@@ -233,6 +241,7 @@ fixtures = [
         "filters": [["name", "in", [
             "Purchase Invoice-custom_intercompany_reference",
             "Purchase Receipt-custom_intercompany_reference",
+            "Purchase Order-custom_intercompany_reference",
             "Delivery Note-custom_intercompany_reference",
         ]]],
     },
@@ -252,6 +261,6 @@ fixtures = [
     },
     {
         "doctype": "Custom HTML Block",
-        "filters": [["name", "in", ["Intercompany Inbox Activity"]]],
+        "filters": [["name", "in", ["Intercompany Ledger Activity"]]],
     },
 ]

@@ -3,7 +3,7 @@ import frappe
 
 def execute(filters=None):
 	columns = [
-		{"label": "Relationship", "fieldname": "relationship", "fieldtype": "Link", "options": "Intercompany Relationship", "width": 140},
+		{"label": "Relationship", "fieldname": "relationship", "fieldtype": "Link", "options": "Intercompany Rule", "width": 140},
 		{"label": "Company A", "fieldname": "company_a", "fieldtype": "Link", "options": "Company", "width": 140},
 		{"label": "Company B", "fieldname": "company_b", "fieldtype": "Link", "options": "Company", "width": 140},
 		{"label": "A Due-from B", "fieldname": "a_due_from", "fieldtype": "Currency", "width": 130},
@@ -13,7 +13,7 @@ def execute(filters=None):
 
 	rows = []
 	for rel in frappe.get_all(
-		"Intercompany Relationship",
+		"Intercompany Rule",
 		fields=["name", "company_a", "company_b", "due_from_a", "due_to_b"],
 	):
 		a_due_from = _balance(rel.due_from_a, rel.company_a)

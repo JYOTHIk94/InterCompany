@@ -23,21 +23,19 @@ def _company_clause(field, user):
 	return f"{field} in ({quoted})"
 
 
-def inbox_query_conditions(user):
-	clause_src = _company_clause("`tabIntercompany Inbox`.source_company", user)
-	clause_tgt = _company_clause("`tabIntercompany Inbox`.target_company", user)
+def ledger_query_conditions(user):
+	# Event rows carry only source_company, so the target clause is a plain OR —
+	# it simply never matches for them.
+	clause_src = _company_clause("`tabIntercompany Ledger`.source_company", user)
+	clause_tgt = _company_clause("`tabIntercompany Ledger`.target_company", user)
 	if not clause_src:
 		return ""
 	return f"({clause_src} or {clause_tgt})"
 
 
-def log_query_conditions(user):
-	return _company_clause("`tabIntercompany Log`.company", user)
-
-
 def relationship_query_conditions(user):
-	clause_a = _company_clause("`tabIntercompany Relationship`.company_a", user)
-	clause_b = _company_clause("`tabIntercompany Relationship`.company_b", user)
+	clause_a = _company_clause("`tabIntercompany Rule`.company_a", user)
+	clause_b = _company_clause("`tabIntercompany Rule`.company_b", user)
 	if not clause_a:
 		return ""
 	return f"({clause_a} or {clause_b})"

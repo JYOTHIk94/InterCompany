@@ -1,0 +1,63 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-08-06 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "section_mapping",
+  "mapping_help",
+  "document_mapping"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_mapping",
+   "fieldtype": "Section Break",
+   "label": "Document Mapping"
+  },
+  {
+   "fieldname": "mapping_help",
+   "fieldtype": "HTML",
+   "options": "<p class=\"text-muted small\">Mappings apply to every Intercompany Rule. Only one Active row is allowed per Source DocType.</p>"
+  },
+  {
+   "fieldname": "document_mapping",
+   "fieldtype": "Table",
+   "label": "Document Mapping",
+   "options": "Intercompany Document Mapping"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-06 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Intercompany",
+ "name": "Intercompany Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Intercompany User"
+  },
+  {
+   "read": 1,
+   "role": "Intercompany Approver"
+  }
+ ],
+ "quick_entry": 0,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

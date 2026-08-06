@@ -1,0 +1,7 @@
+[pre_model_sync]
+intercompany.patches.v1_0.rename_intercompany_relationship_to_rule
+intercompany.patches.v1_0.move_document_mapping_to_settings
+intercompany.patches.v1_0.merge_inbox_and_log_into_ledger
+intercompany.patches.v1_0.fold_ledger_events_into_transactions
+
+[post_model_sync]

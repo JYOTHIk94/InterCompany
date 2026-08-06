@@ -5,7 +5,7 @@ Run from bench:
 
 Creates two companies (QCS Holding, QCS Logistics), the Due-to/Due-from
 accounts in both, a shared Item, an Internal Customer in B (representing A),
-an Internal Supplier in A (representing B), and an Intercompany Relationship
+an Internal Supplier in A (representing B), and an Intercompany Rule
 with an SI->PI mapping row. Re-runs are no-ops.
 """
 
@@ -79,6 +79,13 @@ def seed_demo():
 		due_to_a_uae, due_from_a_uae, due_to_c, due_from_c,
 		internal_customer_uae, internal_supplier,
 	)
+
+	# Mappings are global, so they are seeded once rather than per relationship.
+	_ensure_document_mappings([
+		("Sales Invoice", "Purchase Invoice", "Item to Item"),
+		("Delivery Note", "Purchase Receipt", "Warehouse to Warehouse"),
+		("Journal Entry", "Journal Entry", "Mirror with Sign Flip"),
+	])
 
 	frappe.db.commit()
 	print(f"Seed complete. Relationships: {rel_ab} (SAR↔SAR), {rel_ac} (SAR↔AED)")
@@ -355,14 +362,14 @@ def _merge_allowed_companies(doctype, name, allowed):
 
 def _ensure_relationship(key, company_a, company_b, due_to_a, due_from_a, due_to_b, due_from_b, internal_customer, internal_supplier):
 	existing = frappe.db.get_value(
-		"Intercompany Relationship",
+		"Intercompany Rule",
 		[
 			["company_a", "=", company_a],
 			["company_b", "=", company_b],
 		],
 		"name",
 	) or frappe.db.get_value(
-		"Intercompany Relationship",
+		"Intercompany Rule",
 		[
 			["company_a", "=", company_b],
 			["company_b", "=", company_a],
@@ -372,7 +379,7 @@ def _ensure_relationship(key, company_a, company_b, due_to_a, due_from_a, due_to
 	if existing:
 		return existing
 
-	rel = frappe.new_doc("Intercompany Relationship")
+	rel = frappe.new_doc("Intercompany Rule")
 	rel.company_a = company_a
 	rel.company_b = company_b
 	rel.internal_customer_a = internal_customer  # customer in A repr B
@@ -385,29 +392,28 @@ def _ensure_relationship(key, company_a, company_b, due_to_a, due_from_a, due_to
 	rel.due_from_a = due_from_a
 	rel.due_to_b = due_to_b
 	rel.due_from_b = due_from_b
-	rel.append("document_mapping", {
-		"source_doctype": "Sales Invoice",
-		"target_doctype": "Purchase Invoice",
-		"mapping_rule": "Item to Item",
-		"pricing_rule": "1:1",
-		"status": "Active",
-	})
-	rel.append("document_mapping", {
-		"source_doctype": "Delivery Note",
-		"target_doctype": "Purchase Receipt",
-		"mapping_rule": "Warehouse to Warehouse",
-		"pricing_rule": "1:1",
-		"status": "Active",
-	})
-	rel.append("document_mapping", {
-		"source_doctype": "Journal Entry",
-		"target_doctype": "Journal Entry",
-		"mapping_rule": "Mirror with Sign Flip",
-		"pricing_rule": "1:1",
-		"status": "Active",
-	})
 	rel.insert(ignore_permissions=True)
 	return rel.name
+
+
+def _ensure_document_mappings(wanted):
+	"""Document mappings are global — they live on the Intercompany Settings single."""
+	settings = frappe.get_single("Intercompany Settings")
+	have = {row.source_doctype for row in (settings.document_mapping or [])}
+	added = False
+	for src, tgt, rule in wanted:
+		if src in have:
+			continue
+		settings.append("document_mapping", {
+			"source_doctype": src,
+			"target_doctype": tgt,
+			"mapping_rule": rule,
+			"pricing_rule": "1:1",
+			"status": "Active",
+		})
+		added = True
+	if added:
+		settings.save(ignore_permissions=True)
 
 
 @frappe.whitelist()
@@ -447,9 +453,9 @@ def seed_test_scenarios():
 	seed_demo()
 
 	rel = frappe.get_doc(
-		"Intercompany Relationship",
+		"Intercompany Rule",
 		frappe.db.get_value(
-			"Intercompany Relationship",
+			"Intercompany Rule",
 			[["company_a", "in", [CO_A, CO_B]], ["company_b", "in", [CO_A, CO_B]]],
 			"name",
 		),
@@ -487,19 +493,19 @@ def seed_test_scenarios():
 		# Drive inbox action if requested
 		if action:
 			inbox_name = frappe.db.get_value(
-				"Intercompany Inbox",
-				{"source_doctype": "Sales Invoice", "source_name": si.name},
+				"Intercompany Ledger",
+				{"entry_type": "Transaction", "source_doctype": "Sales Invoice", "source_name": si.name},
 				"name",
 			)
 			if not inbox_name:
 				continue
-			inbox = frappe.get_doc("Intercompany Inbox", inbox_name)
+			inbox = frappe.get_doc("Intercompany Ledger", inbox_name)
 			if action == "accept":
 				inbox.accept()
-				print(f"        ↳ accepted inbox {inbox_name}")
+				print(f"        ↳ accepted ledger entry {inbox_name}")
 			elif action == "reject":
 				inbox.reject(reason="Demo rejection")
-				print(f"        ↳ rejected inbox {inbox_name}")
+				print(f"        ↳ rejected ledger entry {inbox_name}")
 
 	# Top up stock and drive Delivery Note + Journal Entry scenarios
 	_seed_stock_for_dn()
@@ -507,16 +513,18 @@ def seed_test_scenarios():
 	_seed_je_scenarios(rel)
 	_seed_multicurrency_scenarios()
 
-	# Add one entry that lands in the Failed bucket — manually drop a Log row.
-	if not frappe.db.exists("Intercompany Log", {"action": "Demo failure"}):
-		log = frappe.new_doc("Intercompany Log")
-		log.reference_doctype = "Sales Invoice"
-		log.reference_name = created[0] if created else "DEMO"
-		log.company = CO_A
-		log.action = "Demo failure"
-		log.status = "Failed"
-		log.message = "Synthetic failure for KPI demo"
-		log.insert(ignore_permissions=True)
+	# Add one entry that lands in the Failed bucket — manually drop an Event row.
+	if not frappe.db.exists("Intercompany Ledger", {"action": "Demo failure"}):
+		event = frappe.new_doc("Intercompany Ledger")
+		event.entry_type = "Event"
+		event.source_doctype = "Sales Invoice"
+		event.source_name = created[0] if created else "DEMO"
+		event.source_company = CO_A
+		event.action = "Demo failure"
+		event.status = "Failed"
+		event.message = "Synthetic failure for KPI demo"
+		event.insert(ignore_permissions=True)
+		event.submit()
 
 	frappe.db.commit()
 
@@ -526,11 +534,11 @@ def seed_test_scenarios():
 	print("SEEDED COUNTS")
 	print("=" * 60)
 	for status in ("Pending", "Accepted", "Rejected", "Failed"):
-		c = frappe.db.count("Intercompany Inbox", {"status": status})
-		print(f"  Inbox {status:10s}: {c}")
+		c = frappe.db.count("Intercompany Ledger", {"entry_type": "Transaction", "status": status})
+		print(f"  Ledger txn   {status:10s}: {c}")
 	for status in ("Success", "Queued", "Failed"):
-		c = frappe.db.count("Intercompany Log", {"status": status})
-		print(f"  Log   {status:10s}: {c}")
+		c = frappe.db.count("Intercompany Ledger", {"entry_type": "Event", "status": status})
+		print(f"  Ledger event {status:10s}: {c}")
 	print(f"  Sales Invoices issued: {len(created)} (this run)")
 	return created
 
@@ -557,17 +565,15 @@ def reset_test_data():
 		except Exception as e:
 			print(f"skip SI {si.name}: {e}")
 
-	# Sweep any orphan inboxes/logs from past runs
-	for ib in frappe.get_all("Intercompany Inbox", pluck="name"):
+	# Sweep any orphan ledger entries (both types) from past runs
+	for entry in frappe.get_all("Intercompany Ledger", pluck="name"):
 		try:
-			doc = frappe.get_doc("Intercompany Inbox", ib)
+			doc = frappe.get_doc("Intercompany Ledger", entry)
 			if doc.docstatus == 1:
 				doc.cancel()
-			frappe.delete_doc("Intercompany Inbox", ib, force=1, ignore_permissions=True)
+			frappe.delete_doc("Intercompany Ledger", entry, force=1, ignore_permissions=True)
 		except Exception:
 			pass
-	for lg in frappe.get_all("Intercompany Log", pluck="name"):
-		frappe.delete_doc("Intercompany Log", lg, force=1, ignore_permissions=True)
 	for je in frappe.get_all(
 		"Journal Entry",
 		filters={"user_remark": ["like", "%IC clearing for%"]},
@@ -735,14 +741,14 @@ def _seed_multicurrency_scenarios():
 	from frappe.utils import nowdate, add_days
 
 	rel_ac_name = frappe.db.get_value(
-		"Intercompany Relationship",
+		"Intercompany Rule",
 		[["company_a", "in", [CO_A, CO_C]], ["company_b", "in", [CO_A, CO_C]]],
 		"name",
 	)
 	if not rel_ac_name:
 		print("[mc] No SAR↔AED relationship found — skipping")
 		return
-	rel_ac = frappe.get_doc("Intercompany Relationship", rel_ac_name)
+	rel_ac = frappe.get_doc("Intercompany Rule", rel_ac_name)
 	customer = rel_ac.internal_customer_a
 	if not customer:
 		print("[mc] Multicurrency relationship has no internal_customer_a — skipping")
@@ -784,13 +790,13 @@ def _seed_multicurrency_scenarios():
 
 		if action:
 			inbox_name = frappe.db.get_value(
-				"Intercompany Inbox",
-				{"source_doctype": "Sales Invoice", "source_name": si.name},
+				"Intercompany Ledger",
+				{"entry_type": "Transaction", "source_doctype": "Sales Invoice", "source_name": si.name},
 				"name",
 			)
 			if inbox_name:
 				try:
-					inbox = frappe.get_doc("Intercompany Inbox", inbox_name)
+					inbox = frappe.get_doc("Intercompany Ledger", inbox_name)
 					if action == "accept":
 						inbox.accept()
 						print(f"        ↳ accepted {inbox_name}")
